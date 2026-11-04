@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlantGuard AI — Plant Disease Detection System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   RESET & VARIABLES
+═══════════════════════════════════════════════ */
+:root {
+  --bg:       #08120a;
+  --surface:  #0e1c10;
+  --surface2: #132116;
+  --surface3: #192c1c;
+  --border:   #1f3322;
+  --border2:  #2a4430;
+  --accent:   #56d471;
+  --accent2:  #8be49a;
+  --accent3:  #c8f5cf;
+  --warn:     #fbbf24;
+  --danger:   #f87171;
+  --critical: #ff4d4d;
+  --muted:    #35573a;
+  --text:     #dff0e2;
+  --text2:    #7a9e7e;
+  --text3:    #4d6e51;
+  --glow:     0 0 60px rgba(86,212,113,0.12);
+  --radius:   14px;
+  --shadow:   0 8px 32px rgba(0,0,0,0.4);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; font-size:16px; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Lora',Georgia,serif; overflow-x:hidden;
+  line-height:1.65;
+}
+::selection { background:rgba(86,212,113,0.25); }
+a { text-decoration:none; }
+img { max-width:100%; display:block; }
+button { cursor:pointer; border:none; background:none; }
+
+/* ═══════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════ */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--muted); border-radius:6px; }
+::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+/* ═══════════════════════════════════════════════
+   NOISE OVERLAY
+═══════════════════════════════════════════════ */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:0.4;
+}
+
+/* ═══════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════ */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:900;
+  height:68px;
+  background:rgba(8,18,10,0.88);
+  backdrop-filter:blur(24px) saturate(1.4);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center;
+  padding:0 2rem;
+  gap:2rem;
+}
+.nav-logo {
+  font-family:'Syne',sans-serif; font-weight:800; font-size:1.25rem;
+  color:var(--accent); display:flex; align-items:center; gap:10px;
+  white-space:nowrap; flex-shrink:0;
+}
+.nav-logo .leaf { font-size:1.4rem; filter:drop-shadow(0 0 8px rgba(86,212,113,0.6)); }
+.nav-logo .name span { color:var(--text2); font-weight:400; }
+
+/* Main nav links */
+.nav-links { display:flex; align-items:center; gap:2px; list-style:none; flex:1; }
+.nav-item { position:relative; }
+.nav-link {
+  display:flex; align-items:center; gap:5px;
+  padding:0.45rem 0.9rem; border-radius:8px;
+  font-family:'DM Mono',monospace; font-size:0.78rem; letter-spacing:0.04em;
+  color:var(--text2); transition:all 0.2s;
+}
+.nav-link:hover, .nav-link.active { color:var(--accent); background:rgba(86,212,113,0.07); }
+.nav-link .arrow {
+  font-size:0.6rem; transition:transform 0.2s;
+  border:1px solid currentColor; border-radius:2px; padding:1px 3px;
+}
+.nav-item:hover .arrow { transform:rotate(180deg); }
+
+/* DROPDOWN */
+.dropdown {
+  position:absolute; top:calc(100% + 10px); left:0;
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:16px; min-width:260px;
+  padding:0.6rem; z-index:100;
+  box-shadow:0 24px 64px rgba(0,0,0,0.6);
+  opacity:0; pointer-events:none; transform:translateY(-8px) scale(0.98);
+  transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.nav-item:hover .dropdown {
+  opacity:1; pointer-events:all; transform:translateY(0) scale(1);
+}
+.dropdown-section { margin-bottom:0.4rem; }
+.dropdown-label {
+  font-family:'DM Mono',monospace; font-size:0.65rem;
+  color:var(--text3); text-transform:uppercase; letter-spacing:0.12em;
+  padding:0.4rem 0.8rem 0.2rem;
+}
+.dropdown a {
+  display:flex; align-items:center; gap:12px;
+  padding:0.6rem 0.8rem; border-radius:10px; color:var(--text2);
+  font-family:'DM Mono',monospace; font-size:0.8rem;
+  transition:all 0.15s;
+}
+.dropdown a:hover { background:rgba(86,212,113,0.08); color:var(--accent); }
+.dropdown a .di { font-size:1.1rem; width:24px; text-align:center; }
+.dropdown a .dt { flex:1; }
+.dropdown a .dt strong { display:block; color:var(--text); font-size:0.82rem; }
+.dropdown a .dt small { color:var(--text3); font-size:0.72rem; }
+.dropdown a .dbadge {
+  font-size:0.62rem; padding:2px 6px; border-radius:4px;
+  background:rgba(86,212,113,0.1); color:var(--accent);
+  font-family:'DM Mono',monospace;
+}
+.dropdown hr { border:none; border-top:1px solid var(--border); margin:0.4rem 0; }
+
+/* Nav right */
+.nav-right { display:flex; align-items:center; gap:1rem; flex-shrink:0; }
+.nav-status {
+  display:flex; align-items:center; gap:6px;
+  font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text2);
+}
+.status-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(86,212,113,0.2);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100%{box-shadow:0 0 0 3px rgba(86,212,113,0.2)}
+  50%{box-shadow:0 0 0 6px rgba(86,212,113,0.05)}
+}
+.btn-nav {
+  background:var(--accent); color:#08120a;
+  padding:0.45rem 1.2rem; border-radius:8px;
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.8rem;
+  transition:all 0.2s;
+}
+.btn-nav:hover { background:var(--accent2); transform:translateY(-1px); }
+
+/* Mobile hamburger */
+.hamburger { display:none; flex-direction:column; gap:4px; padding:6px; border-radius:6px; }
+.hamburger span { display:block; width:20px; height:2px; background:var(--text); border-radius:2px; transition:0.3s; }
+.hamburger.open span:nth-child(1) { transform:translateY(6px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity:0; }
+.hamburger.open span:nth-child(3) { transform:translateY(-6px) rotate(-45deg); }
+
+/* ═══════════════════════════════════════════════
+   PAGE SYSTEM
+═══════════════════════════════════════════════ */
+.page { display:none; min-height:100vh; padding-top:68px; }
+.page.active { display:block; }
+
+/* ═══════════════════════════════════════════════
+   HERO / HOME
+═══════════════════════════════════════════════ */
+#page-home {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(86,212,113,0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 100% 100%, rgba(86,212,113,0.04) 0%, transparent 60%);
+}
+.hero {
+  max-width:1280px; margin:0 auto; padding:5rem 2rem;
+  display:grid; grid-template-columns:1fr 520px; gap:4rem; align-items:center;
+  min-height:calc(100vh - 68px);
+}
+.hero-eye {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid var(--border2); border-radius:100px;
+  padding:0.3rem 0.9rem; margin-bottom:1.5rem;
+  font-family:'DM Mono',monospace; font-size:0.72rem;
+  color:var(--accent); background:rgba(86,212,113,0.04);
+}
+.hero-eye::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 2s infinite; }
+.hero-title {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:clamp(2.8rem,5.5vw,4.5rem);
+  line-height:1.02; letter-spacing:-2px; margin-bottom:1.5rem;
+}
+.hero-title .line2 { color:var(--accent); }
+.hero-desc { color:var(--text2); font-size:1.1rem; max-width:480px; line-height:1.8; margin-bottom:2rem; }
+.hero-chips { display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:2.5rem; }
+.chip {
+  border:1px solid var(--border2); border-radius:100px;
+  padding:0.3rem 0.8rem; font-family:'DM Mono',monospace; font-size:0.7rem;
+  color:var(--text3); background:var(--surface);
+  transition:all 0.2s;
+}
+.chip:hover { border-color:var(--accent); color:var(--accent); }
+.hero-actions { display:flex; gap:1rem; flex-wrap:wrap; }
+.btn-primary {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--accent); color:#08120a;
+  padding:0.8rem 1.8rem; border-radius:10px;
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem;
+  transition:all 0.25s; border:none;
+}
+.btn-primary:hover { background:var(--accent2); transform:translateY(-3px); box-shadow:0 12px 40px rgba(86,212,113,0.35); }
+.btn-secondary {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid var(--border2); color:var(--text);
+  padding:0.8rem 1.8rem; border-radius:10px;
+  font-family:'Syne',sans-serif; font-weight:600; font-size:0.9rem;
+  transition:all 0.25s; background:var(--surface);
+}
+.btn-secondary:hover { border-color:var(--accent); color:var(--accent); transform:translateY(-2px); }
+
+/* Hero right panel */
+.hero-panel {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:20px; padding:1.8rem;
+  box-shadow:var(--glow), var(--shadow);
+}
+.panel-tabs { display:flex; gap:4px; margin-bottom:1.5rem; background:var(--surface2); border-radius:10px; padding:4px; }
+.panel-tab {
+  flex:1; padding:0.5rem; border-radius:8px; text-align:center;
+  font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2);
+  transition:all 0.2s; border:none; background:none;
+}
+.panel-tab.active { background:var(--accent); color:#08120a; font-weight:600; }
+.panel-content { display:none; }
+.panel-content.active { display:block; animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+/* Accuracy gauge */
+.gauge-wrap { text-align:center; padding:1rem 0; }
+.gauge { width:180px; height:90px; position:relative; margin:0 auto 1rem; overflow:hidden; }
+.gauge svg { width:100%; }
+.gauge-val { font-family:'Syne',sans-serif; font-weight:800; font-size:2rem; color:var(--accent); }
+.gauge-lbl { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text2); }
+.metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:1rem; }
+.metric-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+  padding:0.9rem; text-align:center;
+}
+.metric-val { font-family:'Syne',sans-serif; font-weight:700; font-size:1.4rem; color:var(--accent); }
+.metric-lbl { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text2); margin-top:2px; }
+
+/* Live chart */
+.live-chart { height:120px; background:var(--surface2); border-radius:10px; overflow:hidden; position:relative; }
+.live-chart canvas { width:100%!important; height:100%!important; }
+
+/* Feature cards */
+.features-row { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; margin-top:1rem; }
+.feat-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:1rem;
+}
+.feat-icon { font-size:1.4rem; margin-bottom:0.5rem; }
+.feat-name { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent); margin-bottom:0.2rem; }
+.feat-desc { font-size:0.78rem; color:var(--text2); line-height:1.4; }
+
+/* Stats strip */
+.stats-strip {
+  background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  padding:2rem; overflow:hidden;
+}
+.stats-inner { max-width:1280px; margin:0 auto; display:flex; justify-content:space-around; flex-wrap:wrap; gap:1rem; }
+.sstat { text-align:center; padding:0 2rem; }
+.sstat-val { font-family:'Syne',sans-serif; font-weight:800; font-size:2.2rem; color:var(--accent); }
+.sstat-lbl { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2); margin-top:4px; }
+
+/* ═══════════════════════════════════════════════
+   SCAN PAGE
+═══════════════════════════════════════════════ */
+.scan-wrap { max-width:1000px; margin:0 auto; padding:3rem 2rem; }
+.page-header { margin-bottom:2.5rem; }
+.page-tag {
+  font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--accent);
+  letter-spacing:0.12em; text-transform:uppercase; display:flex; align-items:center; gap:8px;
+  margin-bottom:0.75rem;
+}
+.page-tag::before { content:''; width:20px; height:1px; background:var(--accent); }
+.page-title { font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(1.8rem,3.5vw,2.6rem); letter-spacing:-1px; }
+.page-desc { color:var(--text2); margin-top:0.5rem; font-size:0.95rem; }
+
+/* Scan controls sliders */
+.scan-controls {
+  background:var(--surface); border:1px solid var(--border2); border-radius:18px;
+  padding:2rem; margin-bottom:1.5rem;
+}
+.controls-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; }
+.controls-header h3 { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; }
+.controls-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+.ctrl-group { }
+.ctrl-label {
+  font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent2);
+  letter-spacing:0.05em; margin-bottom:0.6rem; display:flex; justify-content:space-between;
+}
+.ctrl-label span { color:var(--accent); font-weight:500; }
+
+/* Select */
+select.ctrl-select {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  color:var(--text); padding:0.65rem 1rem; border-radius:10px;
+  font-family:'DM Mono',monospace; font-size:0.82rem;
+  appearance:none; cursor:pointer; transition:border 0.2s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a9e7e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
+  padding-right:36px;
+}
+select.ctrl-select:focus { outline:none; border-color:var(--accent); }
+
+/* Range Sliders */
+.slider-container { position:relative; padding-top:4px; }
+input[type=range].ctrl-range {
+  -webkit-appearance:none; appearance:none;
+  width:100%; height:5px; border-radius:5px; outline:none; cursor:pointer;
+  background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--pct,50%), var(--border2) var(--pct,50%), var(--border2) 100%);
+  transition:background 0s;
+}
+input[type=range].ctrl-range::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:18px; height:18px; border-radius:50%;
+  background:var(--accent); border:3px solid var(--bg);
+  box-shadow:0 0 0 2px rgba(86,212,113,0.3), 0 2px 8px rgba(0,0,0,0.3);
+  transition:box-shadow 0.2s;
+}
+input[type=range].ctrl-range::-webkit-slider-thumb:hover {
+  box-shadow:0 0 0 4px rgba(86,212,113,0.2), 0 2px 8px rgba(0,0,0,0.3);
+}
+input[type=range].ctrl-range::-moz-range-thumb {
+  width:18px; height:18px; border-radius:50%;
+  background:var(--accent); border:3px solid var(--bg);
+  box-shadow:0 0 0 2px rgba(86,212,113,0.3);
+}
+
+/* Upload zone */
+.upload-zone {
+  background:var(--surface); border:2px dashed var(--border2); border-radius:18px;
+  padding:3rem 2rem; text-align:center; cursor:pointer;
+  transition:all 0.3s; position:relative; overflow:hidden;
+  margin-bottom:1.5rem;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--accent); background:rgba(86,212,113,0.03);
+  box-shadow:0 0 0 4px rgba(86,212,113,0.06);
+}
+.upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.upload-icon { font-size:3.5rem; margin-bottom:0.75rem; display:block; }
+.upload-title { font-family:'Syne',sans-serif; font-weight:700; font-size:1.15rem; margin-bottom:0.4rem; }
+.upload-sub { color:var(--text2); font-size:0.85rem; margin-bottom:1rem; }
+.upload-formats { display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; }
+.format-tag {
+  font-family:'DM Mono',monospace; font-size:0.65rem;
+  border:1px solid var(--border); border-radius:4px;
+  padding:2px 7px; color:var(--text3);
+}
+.upload-preview { display:none; margin-bottom:1rem; }
+.upload-preview img { max-height:250px; border-radius:12px; margin:0 auto; border:1px solid var(--border2); }
+.btn-analyze {
+  width:100%; padding:1rem; border-radius:12px;
+  background:var(--accent); color:#08120a;
+  font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
+  transition:all 0.25s; border:none; margin-bottom:1.5rem;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.btn-analyze:hover { background:var(--accent2); transform:translateY(-2px); box-shadow:0 10px 30px rgba(86,212,113,0.3); }
+.btn-analyze:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+/* Loading */
+.analyzing {
+  display:none; text-align:center; padding:2rem;
+  background:var(--surface); border:1px solid var(--border2); border-radius:18px;
+  margin-bottom:1.5rem;
+}
+.analyzing.show { display:block; }
+.spinner {
+  width:48px; height:48px; border:3px solid var(--border2);
+  border-top-color:var(--accent); border-radius:50%;
+  animation:spin 0.9s linear infinite; margin:0 auto 1rem;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.analyzing-text { font-family:'DM Mono',monospace; font-size:0.8rem; color:var(--text2); }
+.progress-bar-wrap { margin-top:1rem; }
+.progress-bar-track { height:4px; background:var(--border); border-radius:4px; overflow:hidden; }
+.progress-bar-fill {
+  height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:4px; width:0%; transition:width 0.1s;
+}
+
+/* Results */
+.results {
+  display:none;
+  background:var(--surface); border:1px solid var(--border2); border-radius:18px;
+  overflow:hidden;
+}
+.results.show { display:block; animation:slideUp 0.4s cubic-bezier(0.16,1,0.3,1); }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.results-header {
+  padding:1.5rem 2rem; display:flex; align-items:center; gap:1rem;
+  border-bottom:1px solid var(--border);
+}
+.severity-badge {
+  padding:0.3rem 0.9rem; border-radius:100px;
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.8rem;
+}
+.severity-badge.none { background:rgba(86,212,113,0.15); color:var(--accent); }
+.severity-badge.medium { background:rgba(251,191,36,0.15); color:var(--warn); }
+.severity-badge.high { background:rgba(248,113,113,0.15); color:var(--danger); }
+.severity-badge.critical { background:rgba(255,77,77,0.2); color:var(--critical); border:1px solid rgba(255,77,77,0.3); }
+.results-disease { font-family:'Syne',sans-serif; font-weight:800; font-size:1.3rem; }
+.results-plant { font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--text2); }
+.results-body { padding:2rem; display:grid; grid-template-columns:1fr 1fr; gap:2rem; }
+.results-section h4 {
+  font-family:'DM Mono',monospace; font-size:0.72rem;
+  color:var(--accent2); text-transform:uppercase; letter-spacing:0.08em;
+  margin-bottom:1rem;
+}
+.conf-display { text-align:center; }
+.conf-val { font-family:'Syne',sans-serif; font-weight:800; font-size:3rem; color:var(--accent); line-height:1; }
+.conf-sub { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2); }
+
+/* Confidence bars */
+.conf-bar { margin-bottom:0.75rem; }
+.conf-bar-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+.conf-bar-label { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2); }
+.conf-bar-pct { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent); }
+.conf-bar-track { height:6px; background:var(--border); border-radius:6px; overflow:hidden; }
+.conf-bar-fill { height:100%; border-radius:6px; transition:width 1.2s cubic-bezier(0.16,1,0.3,1); }
+.conf-bar-fill.c1 { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.conf-bar-fill.c2 { background:var(--warn); }
+.conf-bar-fill.c3 { background:var(--muted); }
+
+.symptoms-list { list-style:none; }
+.symptoms-list li {
+  display:flex; align-items:flex-start; gap:8px; margin-bottom:0.6rem;
+  font-size:0.88rem; color:var(--text2);
+}
+.symptoms-list li::before { content:'◆'; color:var(--warn); font-size:0.5rem; margin-top:6px; flex-shrink:0; }
+.treatment-box {
+  background:rgba(86,212,113,0.05); border:1px solid rgba(86,212,113,0.15);
+  border-radius:10px; padding:1rem; font-size:0.88rem; line-height:1.6; color:var(--text2);
+}
+.results-desc { padding:0 2rem 2rem; }
+.results-desc p { color:var(--text2); font-size:0.9rem; line-height:1.7; }
+
+/* ═══════════════════════════════════════════════
+   DATASETS PAGE
+═══════════════════════════════════════════════ */
+.datasets-wrap { max-width:1280px; margin:0 auto; padding:3rem 2rem; }
+.ds-summary {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:2.5rem;
+}
+.ds-sum-card {
+  background:var(--surface); border:1px solid var(--border2); border-radius:14px;
+  padding:1.25rem; text-align:center; transition:all 0.3s;
+}
+.ds-sum-card:hover { border-color:var(--accent); transform:translateY(-3px); }
+.ds-sum-val { font-family:'Syne',sans-serif; font-weight:800; font-size:2rem; color:var(--accent); }
+.ds-sum-lbl { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text2); margin-top:4px; }
+
+/* Dataset filter tabs */
+.filter-tabs { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:2rem; }
+.filter-tab {
+  border:1px solid var(--border); border-radius:100px;
+  padding:0.4rem 1rem; font-family:'DM Mono',monospace; font-size:0.72rem;
+  color:var(--text2); background:var(--surface); transition:all 0.2s;
+}
+.filter-tab:hover, .filter-tab.active { border-color:var(--accent); color:var(--accent); background:rgba(86,212,113,0.07); }
+
+.ds-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:1.5rem; margin-bottom:2rem; }
+.ds-card {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  overflow:hidden; transition:all 0.3s; position:relative;
+}
+.ds-card:hover { border-color:var(--accent); transform:translateY(-4px); box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+.ds-card-top {
+  background:linear-gradient(135deg,var(--surface2),var(--surface3));
+  padding:1.5rem; position:relative; overflow:hidden;
+}
+.ds-card-top::before {
+  content:''; position:absolute; top:0; right:0;
+  width:80px; height:80px; border-radius:50%;
+  background:rgba(86,212,113,0.08); transform:translate(20px,-20px);
+}
+.ds-icon-wrap { font-size:2.2rem; margin-bottom:0.75rem; }
+.ds-name { font-family:'Syne',sans-serif; font-weight:700; font-size:1.15rem; margin-bottom:0.2rem; }
+.ds-paper { font-size:0.78rem; color:var(--text2); font-style:italic; }
+.ds-badges { display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.75rem; }
+.ds-badge {
+  font-family:'DM Mono',monospace; font-size:0.62rem;
+  padding:2px 8px; border-radius:100px;
+  border:1px solid var(--border); color:var(--text2);
+}
+.ds-badge.verified { border-color:var(--accent); color:var(--accent); background:rgba(86,212,113,0.06); }
+.ds-body { padding:1.25rem 1.5rem; }
+.ds-stats-row { display:flex; gap:1.5rem; margin-bottom:1rem; }
+.ds-stat { }
+.ds-stat-val { font-family:'Syne',sans-serif; font-weight:700; font-size:1.3rem; color:var(--accent); }
+.ds-stat-lbl { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text2); }
+.ds-desc { font-size:0.85rem; color:var(--text2); line-height:1.6; margin-bottom:1rem; }
+.ds-progress-label { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); margin-bottom:4px; }
+.ds-progress-track { height:4px; background:var(--border); border-radius:4px; overflow:hidden; }
+.ds-progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 1.5s ease; }
+.ds-footer { padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.ds-source { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text3); }
+.ds-link {
+  font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent);
+  border:1px solid rgba(86,212,113,0.3); border-radius:6px; padding:3px 10px;
+  transition:all 0.2s;
+}
+.ds-link:hover { background:rgba(86,212,113,0.1); }
+
+/* Plants table */
+.plants-table-section { margin-top:3rem; }
+.plants-table-wrap {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  overflow:hidden;
+}
+table { width:100%; border-collapse:collapse; }
+thead { background:var(--surface2); }
+th {
+  padding:1rem 1.25rem; text-align:left;
+  font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text2);
+  text-transform:uppercase; letter-spacing:0.1em;
+  border-bottom:1px solid var(--border);
+}
+td { padding:0.85rem 1.25rem; border-bottom:1px solid rgba(31,51,34,0.5); font-size:0.88rem; color:var(--text2); vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(86,212,113,0.03); }
+.sev-pill {
+  display:inline-block; padding:2px 9px; border-radius:100px;
+  font-family:'DM Mono',monospace; font-size:0.64rem; font-weight:600;
+}
+.sev-pill.none { background:rgba(86,212,113,0.1); color:var(--accent); }
+.sev-pill.medium { background:rgba(251,191,36,0.1); color:var(--warn); }
+.sev-pill.high { background:rgba(248,113,113,0.1); color:var(--danger); }
+.sev-pill.critical { background:rgba(255,77,77,0.1); color:var(--critical); }
+
+/* ═══════════════════════════════════════════════
+   MODELS PAGE
+═══════════════════════════════════════════════ */
+.models-wrap { max-width:1280px; margin:0 auto; padding:3rem 2rem; }
+.model-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1.5rem; margin-bottom:3rem; }
+.model-card {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  padding:1.5rem; transition:all 0.3s; position:relative; overflow:hidden;
+}
+.model-card::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transform:scaleX(0); transform-origin:left; transition:transform 0.3s;
+}
+.model-card:hover::after { transform:scaleX(1); }
+.model-card:hover { border-color:var(--accent); box-shadow:var(--glow); }
+.model-arch { font-family:'Syne',sans-serif; font-weight:800; font-size:1.15rem; margin-bottom:0.3rem; }
+.model-type { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent); margin-bottom:1rem; }
+.model-acc-display { display:flex; align-items:flex-end; gap:4px; margin-bottom:0.5rem; }
+.model-acc-val { font-family:'Syne',sans-serif; font-weight:800; font-size:2.5rem; color:var(--accent); line-height:1; }
+.model-acc-pct { font-family:'Syne',sans-serif; font-weight:700; font-size:1.2rem; color:var(--accent2); margin-bottom:4px; }
+.model-acc-lbl { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text2); margin-bottom:1rem; }
+.model-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; }
+.mm { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.6rem; text-align:center; }
+.mm-val { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--text); }
+.mm-lbl { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); }
+.model-params { margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); }
+.model-params span { color:var(--text2); }
+.primary-badge {
+  position:absolute; top:1rem; right:1rem;
+  background:rgba(86,212,113,0.12); border:1px solid rgba(86,212,113,0.3);
+  border-radius:100px; padding:2px 10px;
+  font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--accent);
+}
+
+/* Training chart section */
+.chart-section {
+  background:var(--surface); border:1px solid var(--border2); border-radius:16px;
+  padding:2rem; margin-bottom:2rem;
+}
+.chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; }
+.chart-header h3 { font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; }
+.chart-legend { display:flex; gap:1rem; }
+.legend-item { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text2); }
+.legend-dot { width:10px; height:10px; border-radius:50%; }
+.chart-canvas-wrap { height:240px; }
+.chart-canvas-wrap canvas { width:100%!important; height:100%!important; }
+
+/* ═══════════════════════════════════════════════
+   ASSETS PAGE
+═══════════════════════════════════════════════ */
+.assets-wrap { max-width:1280px; margin:0 auto; padding:3rem 2rem; }
+.assets-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1.25rem; margin-bottom:2rem; }
+.asset-card {
+  background:var(--surface); border:1px solid var(--border2); border-radius:14px;
+  overflow:hidden; transition:all 0.3s;
+}
+.asset-card:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:var(--shadow); }
+.asset-thumb {
+  height:120px; display:flex; align-items:center; justify-content:center;
+  font-size:3rem; background:var(--surface2);
+  border-bottom:1px solid var(--border);
+}
+.asset-info { padding:1rem; }
+.asset-name { font-family:'Syne',sans-serif; font-weight:600; font-size:0.92rem; margin-bottom:0.2rem; }
+.asset-meta { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); }
+.asset-actions { display:flex; gap:0.5rem; margin-top:0.75rem; }
+.asset-btn {
+  flex:1; padding:0.4rem; border-radius:7px; text-align:center;
+  font-family:'DM Mono',monospace; font-size:0.7rem;
+  border:1px solid var(--border); color:var(--text2); transition:all 0.2s;
+}
+.asset-btn:hover { border-color:var(--accent); color:var(--accent); }
+.asset-btn.primary-btn { background:var(--accent); color:#08120a; border-color:var(--accent); }
+.asset-btn.primary-btn:hover { background:var(--accent2); }
+
+/* References */
+.references-section { margin-top:2rem; }
+.ref-list { }
+.ref-item {
+  background:var(--surface); border:1px solid var(--border2); border-radius:12px;
+  padding:1.25rem 1.5rem; margin-bottom:0.75rem; display:flex; gap:1.5rem; align-items:flex-start;
+  transition:all 0.2s;
+}
+.ref-item:hover { border-color:var(--accent); }
+.ref-num { font-family:'Syne',sans-serif; font-weight:800; font-size:1.5rem; color:var(--muted); min-width:40px; }
+.ref-content { flex:1; }
+.ref-title { font-family:'Syne',sans-serif; font-weight:600; font-size:0.92rem; margin-bottom:0.3rem; }
+.ref-authors { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2); margin-bottom:0.2rem; }
+.ref-journal { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text3); font-style:italic; }
+.ref-doi {
+  display:inline-flex; align-items:center; gap:5px; margin-top:0.5rem;
+  font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--accent);
+  border:1px solid rgba(86,212,113,0.25); border-radius:5px; padding:2px 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════ */
+footer {
+  background:var(--surface); border-top:1px solid var(--border);
+  padding:3rem 2rem; margin-top:4rem;
+}
+.footer-inner { max-width:1280px; margin:0 auto; display:grid; grid-template-columns:1fr 2fr; gap:3rem; }
+.footer-brand .nav-logo { margin-bottom:1rem; font-size:1.1rem; }
+.footer-brand p { font-size:0.85rem; color:var(--text2); line-height:1.7; max-width:280px; }
+.footer-links { display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
+.footer-col h4 { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:1rem; }
+.footer-col a { display:block; color:var(--text2); font-size:0.85rem; margin-bottom:0.5rem; transition:color 0.2s; }
+.footer-col a:hover { color:var(--accent); }
+.footer-bottom { max-width:1280px; margin:2rem auto 0; padding-top:2rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.footer-bottom p { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media(max-width:900px){
+  .hero { grid-template-columns:1fr; padding:3rem 1.5rem; }
+  .hero-panel { display:none; }
+  .controls-grid2 { grid-template-columns:1fr; }
+  .results-body { grid-template-columns:1fr; }
+  .ds-summary { grid-template-columns:repeat(2,1fr); }
+  .footer-inner { grid-template-columns:1fr; }
+  .footer-links { grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:640px){
+  .nav-links { display:none; }
+  .hamburger { display:flex; }
+  .nav-links.open { display:flex; flex-direction:column; position:absolute; top:68px; left:0; right:0; background:var(--surface); border-bottom:1px solid var(--border); padding:1rem; }
+  .ds-grid { grid-template-columns:1fr; }
+  .model-cards { grid-template-columns:1fr; }
+  .assets-grid { grid-template-columns:repeat(2,1fr); }
+  .features-row { grid-template-columns:1fr 1fr; }
+  .ds-summary { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ NAVIGATION ═══════════════ -->
+<nav>
+  <div class="nav-logo">
+    <span class="leaf">🌿</span>
+    <div class="name">PlantGuard<span> AI</span></div>
+  </div>
+
+  <ul class="nav-links" id="navLinks">
+    <li class="nav-item">
+      <a class="nav-link active" href="#" onclick="showPage('home')">Home</a>
+    </li>
+
+    <!-- SCAN DROPDOWN -->
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="showPage('scan')">
+        🔬 Scan <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <div class="dropdown-section">
+          <div class="dropdown-label">Model</div>
+          <a href="#" onclick="showPage('scan');setModel('efficientnet_b0')">
+            <span class="di">🧠</span>
+            <span class="dt">
+              <strong>EfficientNet-B0</strong>
+              <small>Single fine-tuned model — 15 classes</small>
+            </span>
+            <span class="dbadge">Active</span>
+          </a>
+        </div>
+        <hr>
+        <div class="dropdown-section">
+          <div class="dropdown-label">Quick Actions</div>
+          <a href="#" onclick="showPage('scan')">
+            <span class="di">📷</span>
+            <span class="dt"><strong>Upload Image</strong><small>JPG, PNG, WebP supported</small></span>
+          </a>
+          <a href="#" onclick="showPage('scan');demoScan()">
+            <span class="di">🎯</span>
+            <span class="dt"><strong>Run Demo Scan</strong><small>Try with sample image</small></span>
+          </a>
+        </div>
+      </div>
+    </li>
+
+    <!-- DATASETS DROPDOWN -->
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="showPage('datasets')">
+        🗂️ Datasets <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <div class="dropdown-section">
+          <div class="dropdown-label">Available Dataset</div>
+          <a href="#" onclick="showPage('datasets');filterDs('plantvillage')">
+            <span class="di">🌱</span>
+            <span class="dt">
+              <strong>PlantVillage Subset</strong>
+              <small>14,238 images · 15 classes</small>
+            </span>
+            <span class="dbadge verified">Verified</span>
+          </a>
+        </div>
+        <hr>
+        <a href="#" onclick="showPage('datasets')">
+          <span class="di">📊</span>
+          <span class="dt"><strong>Dataset Details</strong><small>Source, size and citation</small></span>
+        </a>
+      </div>
+    </li>
+
+    <!-- MODELS DROPDOWN -->
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="showPage('models')">
+        🤖 Models <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <a href="#" onclick="showPage('models')">
+          <span class="di">📈</span>
+          <span class="dt"><strong>Training Metrics</strong><small>Accuracy, loss curves</small></span>
+        </a>
+        <a href="#" onclick="showPage('models')">
+          <span class="di">🏆</span>
+          <span class="dt"><strong>Performance</strong><small>Accuracy, F1 and loss curves</small></span>
+        </a>
+        <a href="#" onclick="showPage('models')">
+          <span class="di">🔧</span>
+          <span class="dt"><strong>Architecture Details</strong><small>Layers, parameters</small></span>
+        </a>
+      </div>
+    </li>
+
+    <!-- ASSETS DROPDOWN -->
+    <li class="nav-item">
+      <a class="nav-link" href="#" onclick="showPage('assets')">
+        📦 Assets <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <a href="#" onclick="showPage('assets')">
+          <span class="di">🧬</span>
+          <span class="dt"><strong>Model Weights</strong><small>.pth files for download</small></span>
+        </a>
+        <a href="#" onclick="showPage('assets')">
+          <span class="di">📚</span>
+          <span class="dt"><strong>References</strong><small>Google Scholar citations</small></span>
+        </a>
+        <a href="#" onclick="showPage('assets')">
+          <span class="di">🔌</span>
+          <span class="dt"><strong>API Documentation</strong><small>Flask REST API guide</small></span>
+        </a>
+        <a href="#" onclick="showPage('assets')">
+          <span class="di">💾</span>
+          <span class="dt"><strong>Class Labels</strong><small>15 supported disease classes</small></span>
+        </a>
+      </div>
+    </li>
+  </ul>
+
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      API Online
+    </div>
+    <a class="btn-nav" href="#" onclick="showPage('scan')">Scan Plant →</a>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ═══════════════ HOME PAGE ═══════════════ -->
+<div class="page active" id="page-home">
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-eye">🌿 AI-Powered Plant Disease Detection System</div>
+      <h1 class="hero-title">
+        Protect Every<br>
+        <span class="line2">Leaf. Every</span><br>
+        Harvest.
+      </h1>
+      <p class="hero-desc">
+        A single <strong>EfficientNet-B0</strong> fine-tuned on <strong>14,116 leaf images</strong> across
+        <strong>20 disease classes</strong> and <strong>2 crop species (Tomato & Brinjal)</strong>.
+        Upload a leaf photo for instant diagnosis, treatment guidance, and severity assessment.
+      </p>
+      <div class="hero-chips">
+        <span class="chip">🧠 EfficientNet-B0</span>
+        <span class="chip">🍅 Tomato & 🍆 Brinjal</span>
+        <span class="chip">🗂️ 20 Classes</span>
+        <span class="chip">📦 ~17 MB Model</span>
+        <span class="chip" id="chip-accuracy">📊 Accuracy: —</span>
+      </div>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="showPage('scan')">🔬 Scan Your Plant</button>
+        <button class="btn-secondary" onclick="showPage('datasets')">📚 Explore Datasets</button>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="hero-panel">
+        <div class="panel-tabs">
+          <button class="panel-tab active" onclick="switchTab(this,'accuracy')">Accuracy</button>
+          <button class="panel-tab" onclick="switchTab(this,'training')">Training</button>
+          <button class="panel-tab" onclick="switchTab(this,'features')">Features</button>
+        </div>
+
+        <!-- Accuracy Panel -->
+        <div class="panel-content active" id="tab-accuracy">
+          <div class="gauge-wrap">
+            <div class="gauge">
+              <svg viewBox="0 0 200 110">
+                <defs>
+                  <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#56d471"/>
+                    <stop offset="100%" style="stop-color:#8be49a"/>
+                  </linearGradient>
+                </defs>
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1f3322" stroke-width="14" stroke-linecap="round"/>
+                <path id="gaugeArc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round"
+                      stroke-dasharray="251.3" stroke-dashoffset="251.3" style="transition:1s ease"/>
+              </svg>
+            </div>
+            <div class="gauge-val" id="gaugeVal">—</div>
+            <div class="gauge-lbl">Test Accuracy</div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-val" id="metric-classes">20</div>
+              <div class="metric-lbl">Disease Classes</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" id="metric-images">14,116</div>
+              <div class="metric-lbl">Leaf Images</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" id="metric-crops">2</div>
+              <div class="metric-lbl">Crop Species</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" id="metric-f1">—</div>
+              <div class="metric-lbl">Macro F1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Training Panel -->
+        <div class="panel-content" id="tab-training">
+          <div class="live-chart">
+            <canvas id="trainingChart"></canvas>
+          </div>
+          <div class="metrics-grid" style="margin-top:1rem">
+            <div class="metric-card">
+              <div class="metric-val" id="metric-epochs">4</div>
+              <div class="metric-lbl">Epochs</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val">14,238</div>
+              <div class="metric-lbl">Images</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val">3e-4</div>
+              <div class="metric-lbl">LR (Initial)</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val">32</div>
+              <div class="metric-lbl">Batch Size</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features Panel -->
+        <div class="panel-content" id="tab-features">
+          <div class="features-row">
+            <div class="feat-card">
+              <div class="feat-icon">🧠</div>
+              <div class="feat-name">Deep CNN</div>
+              <div class="feat-desc">Transfer learning from ImageNet</div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-icon">⚡</div>
+              <div class="feat-name">EfficientNet-B0</div>
+              <div class="feat-desc">5.3M params, ~21 MB</div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-icon">🔬</div>
+              <div class="feat-name">20 Classes</div>
+              <div class="feat-desc">Across Tomato & Brinjal</div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-icon">💊</div>
+              <div class="feat-name">Treatment</div>
+              <div class="feat-desc">AI recommendations</div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-icon">⚠️</div>
+              <div class="feat-name">Severity</div>
+              <div class="feat-desc">4-level assessment</div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-icon">🌐</div>
+              <div class="feat-name">REST API</div>
+              <div class="feat-desc">Flask backend</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Strip -->
+  <div class="stats-strip">
+    <div class="stats-inner">
+      <div class="sstat">
+        <div class="sstat-val" id="cnt-images">0</div>
+        <div class="sstat-lbl">Leaf Images</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-val">20</div>
+        <div class="sstat-lbl">Disease Classes</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-val">2</div>
+        <div class="sstat-lbl">Crop Species</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-val">1</div>
+        <div class="sstat-lbl">DL Model</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-val" id="sstat-accuracy">—</div>
+        <div class="sstat-lbl">Test Accuracy</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-val">17 MB</div>
+        <div class="sstat-lbl">Model Size</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCAN PAGE ═══════════════ -->
+<div class="page" id="page-scan">
+  <div class="scan-wrap">
+    <div class="page-header">
+      <div class="page-tag">🔬 Disease Detection</div>
+      <h2 class="page-title">Scan Your Plant</h2>
+      <p class="page-desc">Upload a clear photo of the affected leaf for instant AI-powered diagnosis</p>
+    </div>
+
+    <!-- Model & Controls -->
+    <div class="scan-controls">
+      <div class="controls-header">
+        <h3>⚙️ Detection Settings</h3>
+        <div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent)">
+          Model: <span id="selectedModel">EfficientNet-B0</span>
+        </div>
+      </div>
+      <div class="controls-grid2">
+        <div class="ctrl-group">
+          <div class="ctrl-label">Model Architecture <span id="modelLabel">EfficientNet-B0</span></div>
+          <select class="ctrl-select" id="modelSelect" onchange="updateModelLabel(this)">
+            <option value="efficientnet_b0">🧠 EfficientNet-B0 — fine-tuned</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-label">Plant Category <span id="plantCatLabel">All Plants</span></div>
+          <select class="ctrl-select" id="plantSelect" onchange="document.getElementById('plantCatLabel').textContent=this.options[this.selectedIndex].text">
+            <option value="All Plants">All Plants</option>
+            <option value="Tomato">🍅 Tomato</option>
+            <option value="Brinjal">🍆 Brinjal (Eggplant)</option>
+          </select>
+        </div>
+
+        <!-- SLIDERS -->
+        <div class="ctrl-group">
+          <div class="ctrl-label">Confidence Threshold <span id="confThreshVal">60%</span></div>
+          <div class="slider-container">
+            <input type="range" class="ctrl-range" id="confThresh" min="10" max="99" value="60"
+              oninput="updateSlider(this,'confThreshVal','%')" style="--pct:56%">
+          </div>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-label">Top-K Predictions <span id="topKVal">5</span></div>
+          <div class="slider-container">
+            <input type="range" class="ctrl-range" id="topK" min="1" max="5" value="5"
+              oninput="updateSlider(this,'topKVal','')" style="--pct:100%">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="uploadZone"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleDrop(event)">
+      <input type="file" accept="image/*" onchange="handleFileSelect(this)" id="fileInput">
+      <div id="uploadContent">
+        <span class="upload-icon">🌿</span>
+        <h3 class="upload-title">Drop your plant image here</h3>
+        <p class="upload-sub">or click to browse from your device</p>
+        <div class="upload-formats">
+          <span class="format-tag">JPG</span>
+          <span class="format-tag">PNG</span>
+          <span class="format-tag">WEBP</span>
+          <span class="format-tag">BMP</span>
+          <span class="format-tag">Max 10MB</span>
+        </div>
+      </div>
+      <div class="upload-preview" id="uploadPreview">
+        <img id="previewImg" src="" alt="Preview">
+      </div>
+    </div>
+
+    <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()" disabled>
+      🔬 Analyze Plant Disease
+    </button>
+
+    <!-- Analyzing State -->
+    <div class="analyzing" id="analyzingState">
+      <div class="spinner"></div>
+      <div class="analyzing-text" id="analyzingText">Preprocessing image...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+      </div>
+      <div id="analysisError" role="alert" style="display:none;color:#f87171;margin-top:1rem"></div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="resultsPanel">
+      <div class="results-header">
+        <div>
+          <div class="results-disease" id="res-disease">—</div>
+          <div class="results-plant" id="res-plant">—</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:0.75rem;align-items:center">
+          <span class="severity-badge" id="res-severity">—</span>
+          <button class="btn-secondary" style="padding:0.4rem 0.9rem;font-size:0.78rem" onclick="resetScan()">↺ New Scan</button>
+        </div>
+      </div>
+      <div class="results-body">
+        <div class="results-section">
+          <h4>Confidence Score</h4>
+          <div class="conf-display" style="margin-bottom:1.5rem">
+            <div class="conf-val" id="res-conf">—</div>
+            <div class="conf-sub" id="res-model">—</div>
+          </div>
+          <h4>Top-5 Predictions</h4>
+          <div id="conf-bars"></div>
+        </div>
+        <div class="results-section">
+          <h4>Symptoms Detected</h4>
+          <ul class="symptoms-list" id="res-symptoms"></ul>
+          <h4 style="margin-top:1.25rem">Recommended Treatment</h4>
+          <div class="treatment-box" id="res-treatment">—</div>
+        </div>
+      </div>
+      <div class="results-desc">
+        <h4 style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent2);letter-spacing:0.08em;margin-bottom:0.75rem">DISEASE DESCRIPTION</h4>
+        <p id="res-desc">—</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DATASETS PAGE ═══════════════ -->
+<div class="page" id="page-datasets">
+  <div class="datasets-wrap">
+    <div class="page-header">
+      <div class="page-tag">🗂️ Training Data</div>
+      <h2 class="page-title">Datasets & Sources</h2>
+      <p class="page-desc">One public dataset used for training — a compact PlantVillage subset published on the Hugging Face Hub.</p>
+    </div>
+
+    <div class="ds-summary">
+      <div class="ds-sum-card"><div class="ds-sum-val">14,116</div><div class="ds-sum-lbl">Total Images</div></div>
+      <div class="ds-sum-card"><div class="ds-sum-val">1</div><div class="ds-sum-lbl">Dataset</div></div>
+      <div class="ds-sum-card"><div class="ds-sum-val">20</div><div class="ds-sum-lbl">Disease Classes</div></div>
+      <div class="ds-sum-card"><div class="ds-sum-val">2</div><div class="ds-sum-lbl">Crop Species</div></div>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterDs('all',this)">All Datasets</button>
+      <button class="filter-tab" onclick="filterDs('plantvillage',this)">PlantVillage</button>
+    </div>
+
+    <div class="ds-grid" id="dsGrid">
+      <!-- Generated by JS -->
+    </div>
+
+    <!-- All Plants Disease Table -->
+    <div class="plants-table-section">
+      <div class="page-tag">🌱 Disease Registry</div>
+      <h3 class="page-title" style="font-size:1.6rem;margin-bottom:1.5rem">All Supported Plants & Diseases</h3>
+      <div class="plants-table-wrap">
+        <table id="plantsTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Plant</th>
+              <th>Disease</th>
+              <th>Severity</th>
+              <th>Dataset</th>
+            </tr>
+          </thead>
+          <tbody id="plantsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODELS PAGE ═══════════════ -->
+<div class="page" id="page-models">
+  <div class="models-wrap">
+    <div class="page-header">
+      <div class="page-tag">🤖 Deep Learning</div>
+      <h2 class="page-title">Model Architecture & Performance</h2>
+      <p class="page-desc">A single EfficientNet-B0 fine-tuned from ImageNet weights. Every number below is read from the saved checkpoint.</p>
+    </div>
+
+    <div class="model-cards">
+      <div class="model-card" style="border-color:var(--accent)">
+        <span class="primary-badge">Active Model</span>
+        <div class="model-arch">EfficientNet-B0</div>
+        <div class="model-type">Convolutional Neural Network · Transfer Learning</div>
+        <div class="model-acc-display">
+          <div class="model-acc-val" id="card-acc">—</div>
+        </div>
+        <div class="model-acc-lbl">Test Accuracy</div>
+        <div class="model-metrics">
+          <div class="mm"><div class="mm-val" id="card-f1">—</div><div class="mm-lbl">Macro F1</div></div>
+          <div class="mm"><div class="mm-val">15</div><div class="mm-lbl">Classes</div></div>
+          <div class="mm"><div class="mm-val">14,238</div><div class="mm-lbl">Images</div></div>
+        </div>
+        <div class="model-params">Params: <span>5.3M</span> · Input: <span>224×224</span> · Epochs: <span>4</span> · Checkpoint: <span>~21 MB</span></div>
+      </div>
+    </div>
+
+    <!-- Training Charts -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <h3>📈 Accuracy per Epoch</h3>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Train accuracy</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Validation accuracy</div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="accuracyChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-header">
+        <h3>📉 Loss per Epoch</h3>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Train Loss</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Val Loss</div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="lossChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ASSETS PAGE ═══════════════ -->
+<div class="page" id="page-assets">
+  <div class="assets-wrap">
+    <div class="page-header">
+      <div class="page-tag">📦 Resources</div>
+      <h2 class="page-title">Assets & References</h2>
+      <p class="page-desc">Download model weights, view API documentation, and access Google Scholar references.</p>
+    </div>
+
+    <!-- Asset Cards -->
+    <h3 style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:1.25rem">🗃️ Downloadable Assets</h3>
+    <div class="assets-grid">
+      <div class="asset-card">
+        <div class="asset-thumb" style="background:linear-gradient(135deg,#132116,#192c1c)">🧠</div>
+        <div class="asset-info">
+          <div class="asset-name">EfficientNet-B0 Weights</div>
+          <div class="asset-meta">plant_disease_model.pth · ~21 MB · PyTorch</div>
+          <div class="asset-actions">
+            <a class="asset-btn primary-btn" href="/models/plant_disease_model.pth" download>⬇ Download</a>
+            <a class="asset-btn" href="/api/model" target="_blank">ℹ Info</a>
+          </div>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-thumb" style="background:linear-gradient(135deg,#1c1010,#2c1010)">🐍</div>
+        <div class="asset-info">
+          <div class="asset-name">Python Backend</div>
+          <div class="asset-meta">plant_disease_backend.py · Flask inference API</div>
+          <div class="asset-actions">
+            <a class="asset-btn primary-btn" href="plant_disease_backend.py" download>⬇ Download</a>
+            <a class="asset-btn" href="/api/classes" target="_blank">📖 Class list</a>
+          </div>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-thumb" style="background:linear-gradient(135deg,#101c1c,#102020)">📓</div>
+        <div class="asset-info">
+          <div class="asset-name">Training Notebook</div>
+          <div class="asset-meta">plant_disease_training_colab.ipynb · Google Colab</div>
+          <div class="asset-actions">
+            <a class="asset-btn primary-btn" href="plant_disease_training_colab.ipynb" download>⬇ Download</a>
+            <a class="asset-btn" href="https://colab.research.google.com" target="_blank">▶ Open Colab</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Docs -->
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2rem;margin-bottom:2rem;margin-top:2rem">
+      <h3 style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:1.25rem">🔌 REST API Endpoints</h3>
+      <div style="display:grid;gap:0.75rem">
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;align-items:center;gap:1rem">
+          <span style="background:rgba(86,212,113,0.15);color:var(--accent);padding:4px 10px;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:600">POST</span>
+          <code style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text)">/api/predict</code>
+          <span style="color:var(--text2);font-size:0.82rem;margin-left:auto">Upload image → Get disease prediction</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;align-items:center;gap:1rem">
+          <span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:4px 10px;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:600">GET</span>
+          <code style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text)">/api/classes</code>
+          <span style="color:var(--text2);font-size:0.82rem;margin-left:auto">List all 15 disease classes</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;align-items:center;gap:1rem">
+          <span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:4px 10px;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:600">GET</span>
+          <code style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text)">/api/model</code>
+          <span style="color:var(--text2);font-size:0.82rem;margin-left:auto">Accuracy, F1 and training history</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;align-items:center;gap:1rem">
+          <span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:4px 10px;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:600">GET</span>
+          <code style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text)">/api/health</code>
+          <span style="color:var(--text2);font-size:0.82rem;margin-left:auto">Server and model status</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- References (Google Scholar) -->
+    <div class="references-section">
+      <h3 style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:1.25rem">📚 Google Scholar References</h3>
+      <div class="ref-list" id="refList">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="nav-logo"><span class="leaf">🌿</span><div>PlantGuard<span style="color:var(--text2);font-weight:400"> AI</span></div></div>
+      <p>AI-powered plant disease detection system using deep learning and machine learning to protect crops and improve agricultural outcomes worldwide.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <a href="#" onclick="showPage('home')">Home</a>
+        <a href="#" onclick="showPage('scan')">Scan Plant</a>
+        <a href="#" onclick="showPage('datasets')">Datasets</a>
+        <a href="#" onclick="showPage('models')">Models</a>
+        <a href="#" onclick="showPage('assets')">Assets</a>
+      </div>
+      <div class="footer-col">
+        <h4>Dataset</h4>
+        <a href="https://huggingface.co/datasets/GVJahnavi/Plant_village_subset" target="_blank">PlantVillage Subset</a>
+        <a href="https://www.tensorflow.org/datasets/catalog/plant_village" target="_blank">PlantVillage (original)</a>
+        <a href="https://arxiv.org/abs/1511.08060" target="_blank">Hughes &amp; Salathé 2015</a>
+      </div>
+      <div class="footer-col">
+        <h4>References</h4>
+        <a href="https://scholar.google.com/scholar?q=PlantVillage+Hughes+Salathe+2016" target="_blank">Hughes & Salathé 2016</a>
+        <a href="https://scholar.google.com/scholar?q=Mohanty+deep+learning+plant+disease+2016" target="_blank">Mohanty et al. 2016</a>
+        <a href="https://scholar.google.com/scholar?q=EfficientNet+Tan+Le+2019" target="_blank">Tan &amp; Le 2019</a>
+        <a href="https://scholar.google.com/scholar?q=Ferentinos+deep+learning+plant+disease+2018" target="_blank">Ferentinos 2018</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 PlantGuard AI · Built with PyTorch &amp; EfficientNet-B0</p>
+    <p>Backend: Flask REST API · Trained on 14,238 images · 15 disease classes</p>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+const DISEASES = [
+  {plant:"Brinjal",disease:"Aphids",severity:"medium",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Cercospora Leaf Spot",severity:"medium",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Defect Eggplant",severity:"medium",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Flea Beetles",severity:"medium",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Fresh Eggplant",severity:"none",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Fresh Eggplant Leaf",severity:"none",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Leaf Wilt",severity:"high",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Phytophthora Blight",severity:"high",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Powdery Mildew",severity:"medium",dataset:"Project-AgML"},
+  {plant:"Brinjal",disease:"Tobacco Mosaic Virus",severity:"critical",dataset:"Project-AgML"},
+  {plant:"Tomato",disease:"Bacterial Spot",severity:"high",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Early Blight",severity:"medium",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Healthy",severity:"none",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Late Blight",severity:"critical",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Leaf Mold",severity:"medium",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Septoria Leaf Spot",severity:"high",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Spider Mites Two-spotted Spider Mite",severity:"medium",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Target Spot",severity:"medium",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Tomato Mosaic Virus",severity:"critical",dataset:"PlantVillage"},
+  {plant:"Tomato",disease:"Tomato Yellow Leaf Curl Virus",severity:"critical",dataset:"PlantVillage"}
+];
+
+const DATASETS_DATA = [
+  {
+    id:"agml_pv",
+    icon:"🌱", name:"Tomato & Brinjal Dataset",
+    images:14116, classes:20, plants:2,
+    paper:"PlantVillage & Brinjal Disease Dataset",
+    doi:"10.3389/fpls.2016.01419",
+    source:"Kaggle / PlantVillage",
+    url:"https://www.kaggle.com",
+    desc:"A specialized collection of 14,116 images across 20 distinct disease classes covering Tomato and Brinjal (Eggplant).",
+    pct:100,
+    verified:true
+  }
+];
+
+const REFERENCES = [
+  {
+    title:"An open access repository of images on plant health (PlantVillage)",
+    authors:"David P. Hughes, Marcel Salathé",
+    journal:"arXiv:1511.08060, 2015",
+    doi:"10.48550/arXiv.1511.08060",
+    url:"https://scholar.google.com/scholar?q=Hughes+Salathe+plant+disease+2015"
+  },
+  {
+    title:"Using deep learning for image-based plant disease detection",
+    authors:"Sharada P. Mohanty, David P. Hughes, Marcel Salathé",
+    journal:"Frontiers in Plant Science, Vol. 7, 2016",
+    doi:"10.3389/fpls.2016.01419",
+    url:"https://scholar.google.com/scholar?q=Mohanty+Hughes+Salathe+deep+learning+plant+2016"
+  },
+  {
+    title:"Deep learning models for plant disease detection and diagnosis",
+    authors:"Konstantinos P. Ferentinos",
+    journal:"Computers and Electronics in Agriculture, Vol. 145, 2018",
+    doi:"10.1016/j.compag.2018.01.009",
+    url:"https://scholar.google.com/scholar?q=Ferentinos+deep+learning+plant+disease+2018"
+  },
+  {
+    title:"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks",
+    authors:"Mingxing Tan, Quoc V. Le",
+    journal:"ICML 2019, arXiv:1905.11946",
+    doi:"10.48550/arXiv.1905.11946",
+    url:"https://scholar.google.com/scholar?q=EfficientNet+Tan+Le+2019"
+  }
+];
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='models') setTimeout(drawCharts,100);
+  if(id==='datasets') renderDatasets();
+  if(id==='assets') renderAssets();
+}
+
+function toggleMenu(){
+  const links = document.getElementById('navLinks');
+  const ham   = document.getElementById('hamburger');
+  links.classList.toggle('open');
+  ham.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+//  SLIDERS
+// ═══════════════════════════════════════════
+function updateSlider(input, labelId, suffix) {
+  document.getElementById(labelId).textContent = input.value + suffix;
+  const min = +input.min, max = +input.max, val = +input.value;
+  const pct = ((val - min) / (max - min)) * 100;
+  input.style.setProperty('--pct', pct + '%');
+}
+
+function updateModelLabel(sel) {
+  const text = sel.options[sel.selectedIndex].text;
+  document.getElementById('modelLabel').textContent = text;
+  document.getElementById('selectedModel').textContent = text;
+}
+
+function setModel(m) {
+  const sel = document.getElementById('modelSelect');
+  const map = {efficientnet_b0:0};
+  if(map[m] !== undefined) { sel.selectedIndex = map[m]; updateModelLabel(sel); }
+}
+
+// ═══════════════════════════════════════════
+//  SCAN / UPLOAD
+// ═══════════════════════════════════════════
+let uploadedFile = null;
+let demoMode = false;
+const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+
+function handleFileSelect(input) {
+  if(input.files && input.files[0]) {
+    demoMode = false;
+    uploadedFile = input.files[0];
+    showPreview(uploadedFile);
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  document.getElementById('uploadZone').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('uploadZone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) {
+    demoMode = false;
+    uploadedFile = file;
+    showPreview(file);
+  }
+}
+
+function showPreview(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('uploadContent').style.display = 'none';
+    document.getElementById('uploadPreview').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetScan() {
+  uploadedFile = null;
+  demoMode = false;
+  document.getElementById('previewImg').src = '';
+  document.getElementById('uploadContent').style.display = 'block';
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('resultsPanel').classList.remove('show');
+  document.getElementById('analyzingState').classList.remove('show');
+  document.getElementById('analysisError').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════
+//  ANALYSIS (Simulated / connects to /api/predict)
+// ═══════════════════════════════════════════
+const DEMO_RESULTS = [
+  {disease:"Tomato — Late Blight",plant:"Tomato",conf:95.4,severity:"critical",
+   desc:"Phytophthora infestans causing rapid destruction of foliage and fruit in cool, wet conditions.",
+   treatment:"Apply cymoxanil + mancozeb immediately. Remove and destroy affected leaves. Avoid overhead watering.",
+   symptoms:["Large water-soaked lesions","White fuzzy growth on undersides","Stem lesions","Rapid defoliation"],
+   top5:[{d:"Tomato — Late Blight",p:95.4},{d:"Tomato — Early Blight",p:2.8},{d:"Tomato — Leaf Mold",p:1.1},{d:"Brinjal — Phytophthora Blight",p:0.5},{d:"Tomato — Healthy",p:0.2}]
+  },
+  {disease:"Brinjal — Cercospora Leaf Spot",plant:"Brinjal",conf:92.1,severity:"medium",
+   desc:"Fungal disease causing circular brown spots with concentric rings on eggplant foliage.",
+   treatment:"Apply copper-based fungicides. Ensure proper plant spacing to facilitate airflow.",
+   symptoms:["Circular leaf spots","Gray centers with dark margins","Premature yellowing","Leaf drop"],
+   top5:[{d:"Brinjal — Cercospora Leaf Spot",p:92.1},{d:"Brinjal — Leaf Wilt",p:4.3},{d:"Tomato — Target Spot",p:2.0},{d:"Brinjal — Powdery Mildew",p:1.1},{d:"Brinjal — Fresh Eggplant Leaf",p:0.5}]
+  },
+  {disease:"Tomato — Healthy",plant:"Tomato",conf:99.2,severity:"none",
+   desc:"No disease symptoms detected. The foliage shows normal vigorous growth.",
+   treatment:"Continue regular watering, balanced feeding, and monitoring.",
+   symptoms:[],
+   top5:[{d:"Tomato — Healthy",p:99.2},{d:"Tomato — Bacterial Spot",p:0.4},{d:"Tomato — Target Spot",p:0.2},{d:"Tomato — Early Blight",p:0.1},{d:"Tomato — Leaf Mold",p:0.1}]
+  },
+  {disease:"Brinjal — Fresh Eggplant Leaf",plant:"Brinjal",conf:98.7,severity:"none",
+   desc:"Healthy brinjal leaf without any detectable pathogenic lesions or pests.",
+   treatment:"Maintain normal field hygiene, pest surveillance, and balanced irrigation.",
+   symptoms:[],
+   top5:[{d:"Brinjal — Fresh Eggplant Leaf",p:98.7},{d:"Brinjal — Fresh Eggplant",p:0.8},{d:"Brinjal — Flea Beetles",p:0.3},{d:"Brinjal — Aphids",p:0.1},{d:"Brinjal — Powdery Mildew",p:0.1}]
+  }
+];
+
+function runAnalysis() {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  document.getElementById('resultsPanel').classList.remove('show');
+  document.getElementById('analysisError').style.display = 'none';
+  document.getElementById('analyzingState').classList.add('show');
+
+  if(demoMode) {
+    displayDemoResult();
+  } else if(uploadedFile instanceof File) {
+    const formData = new FormData();
+    formData.append('image', uploadedFile);
+    fetch(`${API_BASE_URL}/api/predict`, {method:'POST', body: formData})
+      .then(async response => {
+        const data = await response.json();
+        if(!response.ok || !data.success) {
+          throw new Error(data.error || `Prediction API returned HTTP ${response.status}`);
+        }
+        displayAPIResult(data.result);
+      })
+      .catch(error => {
+        document.getElementById('analyzingState').classList.remove('show');
+        document.getElementById('analysisError').textContent =
+          `Could not get a real prediction from the backend: ${error.message}`;
+        document.getElementById('analysisError').style.display = 'block';
+        btn.disabled = false;
+      });
+  } else {
+    document.getElementById('analyzingState').classList.remove('show');
+    document.getElementById('analysisError').textContent = 'Select an image before requesting a prediction.';
+    document.getElementById('analysisError').style.display = 'block';
+    btn.disabled = false;
+  }
+
+  if(!demoMode && uploadedFile instanceof File) simulateProgress();
+}
+
+function simulateProgress() {
+  const fill = document.getElementById('progressFill');
+  const steps = ["Preprocessing image...","Running EfficientNet-B0...","Calculating class probabilities...","Generating report..."];
+  let i = 0, pct = 0;
+  const txt = document.getElementById('analyzingText');
+  const iv = setInterval(() => {
+    pct += 14;
+    fill.style.width = Math.min(pct, 95) + '%';
+    if(i < steps.length) txt.textContent = steps[i++];
+    if(pct >= 95) clearInterval(iv);
+  }, 300);
+}
+
+function displayDemoResult() {
+  setTimeout(() => {
+    const r = DEMO_RESULTS[Math.floor(Math.random() * DEMO_RESULTS.length)];
+    document.getElementById('progressFill').style.width = '100%';
+    setTimeout(() => {
+      document.getElementById('analyzingState').classList.remove('show');
+      renderResult({...r, isDemo:true});
+      document.getElementById('analyzeBtn').disabled = false;
+    }, 400);
+  }, 2200);
+}
+
+function displayAPIResult(data) {
+  document.getElementById('progressFill').style.width = '100%';
+  setTimeout(() => {
+    document.getElementById('analyzingState').classList.remove('show');
+    const r = {
+      disease: data.plant + ' — ' + data.disease,
+      plant: data.plant,
+      conf: data.confidence,
+      severity: data.severity,
+      desc: data.description,
+      treatment: data.treatment,
+      symptoms: data.symptoms,
+      top5: (data.top5 || []).map(t => ({d: t.plant + ' — ' + t.disease, p: t.confidence}))
+    };
+    renderResult(r);
+    document.getElementById('analyzeBtn').disabled = false;
+  }, 400);
+}
+
+function renderResult(r) {
+  document.getElementById('res-disease').textContent = r.disease;
+  document.getElementById('res-plant').textContent   = '🌱 ' + r.plant;
+  document.getElementById('res-conf').textContent    = r.conf.toFixed(1) + '%';
+
+  const threshold = +(document.getElementById('confThresh')?.value || 0);
+  const notes = [r.isDemo ? 'DEMO ONLY — sample result' : 'EfficientNet-B0 backend'];
+  if(r.conf < threshold) notes.push('below ' + threshold + '% threshold');
+  const chosenPlant = document.getElementById('plantSelect')?.value || 'All Plants';
+  if(chosenPlant !== 'All Plants' && chosenPlant !== r.plant) notes.push('filter was ' + chosenPlant);
+  document.getElementById('res-model').textContent = notes.join(' · ');
+
+  document.getElementById('res-desc').textContent    = r.desc;
+  document.getElementById('res-treatment').textContent = r.treatment;
+
+  const sevEl = document.getElementById('res-severity');
+  sevEl.className = 'severity-badge ' + r.severity;
+  sevEl.textContent = r.severity === 'none' ? '✅ Healthy' : r.severity === 'critical' ? '🔴 Critical' : r.severity === 'high' ? '🟠 High' : '🟡 Medium';
+
+  const symp = document.getElementById('res-symptoms');
+  symp.innerHTML = r.symptoms.length
+    ? r.symptoms.map(s => `<li>${s}</li>`).join('')
+    : '<li style="color:var(--accent)">No disease symptoms detected ✓</li>';
+
+  const topK = Math.max(1, +(document.getElementById('topK')?.value || 5));
+  const bars = document.getElementById('conf-bars');
+  bars.innerHTML = r.top5.slice(0, topK).map((t,i) =>
+    `<div class="conf-bar">
+      <div class="conf-bar-header">
+        <span class="conf-bar-label">${t.d}</span>
+        <span class="conf-bar-pct">${t.p.toFixed(1)}%</span>
+      </div>
+      <div class="conf-bar-track">
+        <div class="conf-bar-fill ${i===0?'c1':i===1?'c2':'c3'}" style="width:0%" data-w="${t.p}"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  document.getElementById('resultsPanel').classList.add('show');
+  setTimeout(() => {
+    document.querySelectorAll('.conf-bar-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 100);
+}
+
+function demoScan() {
+  document.getElementById('uploadContent').style.display = 'none';
+  document.getElementById('uploadPreview').style.display = 'block';
+  document.getElementById('previewImg').src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="200"%3E%3Crect fill="%23132116" width="300" height="200" rx="12"/%3E%3Ctext x="150" y="110" text-anchor="middle" fill="%2356d471" font-size="64"%3E🌽%3C/text%3E%3Ctext x="150" y="150" text-anchor="middle" fill="%237a9e7e" font-size="14"%3EDemo Image%3C/text%3E%3C/svg%3E';
+  document.getElementById('analyzeBtn').disabled = false;
+  demoMode = true;
+  uploadedFile = true;
+}
+
+// ═══════════════════════════════════════════
+//  PANEL TABS
+// ═══════════════════════════════════════════
+function switchTab(btn, id) {
+  btn.closest('.hero-panel').querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  btn.closest('.hero-panel').querySelectorAll('.panel-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='training') drawMiniChart();
+}
+
+// ═══════════════════════════════════════════
+//  CHARTS (inline canvas)
+// ═══════════════════════════════════════════
+function drawLineChart(canvas, datasets, labels, yLabel, title) {
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 600;
+  const H = canvas.offsetHeight || 240;
+  canvas.width = W; canvas.height = H;
+
+  const pad = {t:20,r:20,b:40,l:50};
+  const iW = W - pad.l - pad.r;
+  const iH = H - pad.t - pad.b;
+  const allVals = datasets.flatMap(d=>d.data);
+  const minV = Math.min(...allVals) * 0.98;
+  const maxV = Math.max(...allVals) * 1.01;
+  const span = Math.max(1, labels.length - 1);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle = '#1f3322'; ctx.lineWidth = 1;
+  for(let i=0;i<=4;i++) {
+    const y = pad.t + (iH/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    const val = maxV - ((maxV-minV)/4)*i;
+    ctx.fillStyle = '#4d6e51'; ctx.font = '10px DM Mono,monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(1)+'%', pad.l-6, y+4);
+  }
+
+  // Lines
+  datasets.forEach(ds => {
+    ctx.beginPath();
+    ds.data.forEach((v,i) => {
+      const x = pad.l + (iW/span)*i;
+      const y = pad.t + iH*(1-(v-minV)/(maxV-minV));
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = ds.color; ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round'; ctx.stroke();
+
+    // Dots
+    ds.data.forEach((v,i) => {
+      const x = pad.l + (iW/span)*i;
+      const y = pad.t + iH*(1-(v-minV)/(maxV-minV));
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fillStyle = ds.color; ctx.fill();
+    });
+  });
+
+  // X labels
+  ctx.fillStyle = '#4d6e51'; ctx.textAlign = 'center'; ctx.font = '10px DM Mono,monospace';
+  labels.forEach((l,i) => {
+    if(i % Math.ceil(labels.length/8) === 0) {
+      const x = pad.l + (iW/span)*i;
+      ctx.fillText(l, x, H-10);
+    }
+  });
+}
+
+// Real training history, filled by loadModelInfo() once the backend answers.
+let MODEL_INFO = null;
+
+function historySeries() {
+  const h = MODEL_INFO && MODEL_INFO.history;
+  if(!h || !Array.isArray(h.val_acc) || h.val_acc.length === 0) return null;
+  return h;
+}
+
+function drawEmptyChart(canvas, message) {
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 600;
+  canvas.height = canvas.offsetHeight || 240;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#4d6e51';
+  ctx.font = '13px DM Mono,monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+}
+
+function drawCharts() {
+  const accCanvas = document.getElementById('accuracyChart');
+  const lossCanvas = document.getElementById('lossChart');
+  const h = historySeries();
+
+  if(!h) {
+    drawEmptyChart(accCanvas, 'No training history yet — start the backend and reload.');
+    drawEmptyChart(lossCanvas, 'No training history yet — start the backend and reload.');
+    return;
+  }
+
+  const labels = h.val_acc.map((_, i) => 'E' + (i + 1));
+
+  if(accCanvas) drawLineChart(accCanvas,
+    [{data:h.train_acc, color:'#56d471'}, {data:h.val_acc, color:'#fbbf24'}],
+    labels, 'Accuracy (%)', 'Accuracy per epoch');
+
+  if(lossCanvas) drawLineChart(lossCanvas,
+    [{data:h.train_loss, color:'#56d471'}, {data:h.val_loss, color:'#f87171'}],
+    labels, 'Loss', 'Loss per epoch');
+}
+
+function drawMiniChart() {
+  const canvas = document.getElementById('trainingChart');
+  if(!canvas) return;
+  const h = historySeries();
+  if(!h) { drawEmptyChart(canvas, 'Awaiting backend…'); return; }
+
+  const W = canvas.parentElement.offsetWidth || 300;
+  const H = 120;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const data = h.val_acc;
+  const n = Math.max(1, data.length - 1);
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (W / n) * i;
+    const y = H - (v / 100) * H * 0.9 - H * 0.05;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#56d471'; ctx.lineWidth = 2; ctx.stroke();
+
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(86,212,113,0.2)');
+  grad.addColorStop(1, 'rgba(86,212,113,0)');
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+}
+
+// ═══════════════════════════════════════════
+//  DATASETS
+// ═══════════════════════════════════════════
+function renderDatasets(filter='all') {
+  const grid = document.getElementById('dsGrid');
+  const filtered = filter==='all' ? DATASETS_DATA : DATASETS_DATA.filter(d=>d.id===filter);
+  grid.innerHTML = filtered.map(d => `
+    <div class="ds-card" data-id="${d.id}">
+      <div class="ds-card-top">
+        <div class="ds-icon-wrap">${d.icon}</div>
+        <div class="ds-name">${d.name}</div>
+        <div class="ds-paper">${d.paper}</div>
+        <div class="ds-badges">
+          <span class="ds-badge">DOI: ${d.doi}</span>
+          ${d.verified?'<span class="ds-badge verified">✓ Verified</span>':''}
+          <span class="ds-badge">${d.source}</span>
+        </div>
+      </div>
+      <div class="ds-body">
+        <div class="ds-stats-row">
+          <div class="ds-stat">
+            <div class="ds-stat-val">${d.images.toLocaleString()}</div>
+            <div class="ds-stat-lbl">Images</div>
+          </div>
+          <div class="ds-stat">
+            <div class="ds-stat-val">${d.classes}</div>
+            <div class="ds-stat-lbl">Classes</div>
+          </div>
+          <div class="ds-stat">
+            <div class="ds-stat-val">${d.plants}</div>
+            <div class="ds-stat-lbl">Plants</div>
+          </div>
+        </div>
+        <p class="ds-desc">${d.desc}</p>
+        <div class="ds-progress-label">
+          <span>Dataset Contribution</span>
+          <span>${d.pct}%</span>
+        </div>
+        <div class="ds-progress-track">
+          <div class="ds-progress-fill" style="width:0%" data-w="${d.pct}%"></div>
+        </div>
+      </div>
+      <div class="ds-footer">
+        <span class="ds-source">Source: ${d.source}</span>
+        <a class="ds-link" href="${d.url}" target="_blank">Open ↗</a>
+      </div>
+    </div>
+  `).join('');
+
+  // Animate progress bars
+  setTimeout(() => {
+    document.querySelectorAll('.ds-progress-fill').forEach(el => {
+      el.style.width = el.dataset.w;
+    });
+  }, 100);
+
+  // Render table
+  const tbody = document.getElementById('plantsTableBody');
+  tbody.innerHTML = DISEASES.map((d,i) => `
+    <tr>
+      <td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:0.72rem">${i+1}</td>
+      <td style="color:var(--text);font-weight:500">${d.plant}</td>
+      <td>${d.disease}</td>
+      <td><span class="sev-pill ${d.severity}">${d.severity}</span></td>
+      <td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:0.72rem">${d.dataset}</td>
+    </tr>
+  `).join('');
+}
+
+function filterDs(id, btn) {
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderDatasets(id);
+}
+
+// ═══════════════════════════════════════════
+//  ASSETS / REFERENCES
+// ═══════════════════════════════════════════
+let assetsRendered = false;
+
+function renderAssets() {
+  const refList = document.getElementById('refList');
+  if(!refList || assetsRendered) return;
+  assetsRendered = true;
+  refList.innerHTML = REFERENCES.map((r,i) => `
+    <div class="ref-item">
+      <div class="ref-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="ref-content">
+        <div class="ref-title">${r.title}</div>
+        <div class="ref-authors">${r.authors}</div>
+        <div class="ref-journal">${r.journal}</div>
+        <a class="ref-doi" href="${r.url}" target="_blank">
+          🔗 Google Scholar · DOI: ${r.doi}
+        </a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+//  COUNTER ANIMATION
+// ═══════════════════════════════════════════
+function animateCounter(el, target, suffix='') {
+  let start = 0;
+  const dur = 2000;
+  const step = target / (dur/16);
+  const iv = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = Math.floor(start).toLocaleString() + suffix;
+    if(start >= target) clearInterval(iv);
+  }, 16);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Animate counter
+  animateCounter(document.getElementById('cnt-images'), 14238, '');
+
+  // Init all sliders visual
+  document.querySelectorAll('input[type=range].ctrl-range').forEach(r => {
+    const min = +r.min, max = +r.max, val = +r.value;
+    r.style.setProperty('--pct', ((val-min)/(max-min)*100)+'%');
+  });
+
+  // Init mini chart
+  setTimeout(drawMiniChart, 500);
+
+  // Render datasets on load (for table)
+  setTimeout(() => {
+    if(document.getElementById('dsGrid')) renderDatasets();
+  }, 0);
+
+  // Pull real metrics + training history from the backend
+  loadModelInfo();
+});
+
+// ═══════════════════════════════════════════
+//  BACKEND MODEL INFO
+// ═══════════════════════════════════════════
+async function loadModelInfo() {
+  const status = document.querySelector('.nav-status');
+  try {
+    const res = await fetch(API_BASE_URL + '/api/model');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const info = await res.json();
+    MODEL_INFO = info;
+
+    const acc = Number(info.test_accuracy != null ? info.test_accuracy : info.val_acc);
+    if(Number.isFinite(acc)) {
+      const txt = acc.toFixed(1) + '%';
+      const set = (id, value, prop) => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        if(prop) el.setAttribute(prop, value); else el.textContent = value;
+      };
+      set('gaugeVal', txt);
+      set('gaugeArc', String(251.3 * (1 - Math.min(100, acc) / 100)), 'stroke-dashoffset');
+      set('sstat-accuracy', txt);
+      set('chip-accuracy', '📊 Accuracy: ' + txt);
+      set('card-acc', txt);
+    }
+
+    const f1 = Number(info.macro_f1);
+    if(Number.isFinite(f1)) {
+      const v = f1.toFixed(3);
+      const el = document.getElementById('metric-f1');
+      if(el) el.textContent = v;
+      const card = document.getElementById('card-f1');
+      if(card) card.textContent = v;
+    }
+    if(info.num_classes) {
+      const el = document.getElementById('metric-classes');
+      if(el) el.textContent = info.num_classes;
+    }
+    if(info.train_images) {
+      const total = Number(info.train_images) + Number(info.val_images || 0);
+      const el = document.getElementById('metric-images');
+      if(el) el.textContent = total.toLocaleString();
+    }
+    if(status) status.lastChild.textContent = ' API Online';
+    drawCharts();
+    drawMiniChart();
+  } catch (err) {
+    if(status) status.lastChild.textContent = ' Backend offline';
+    console.warn('Could not load /api/model:', err.message);
+    drawCharts();
+  }
+}
+</script>
+</body>
+</html>
