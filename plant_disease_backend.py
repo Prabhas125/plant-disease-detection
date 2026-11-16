@@ -7,7 +7,7 @@ EfficientNet-B0 model trained in ``plant_disease_training_colab.ipynb``.
 
 The model is trained on the public PlantVillage subset
 ``GVJahnavi/Plant_village_subset``:
-    14,238 images · 15 classes · 5 crops (Apple, Blueberry, Cherry, Corn, Grape)
+    14,238 images · 
     Checkpoint: ~21 MB
 
 SETUP

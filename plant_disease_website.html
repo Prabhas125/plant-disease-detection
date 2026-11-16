@@ -1642,7 +1642,7 @@ function renderResult(r) {
   const symp = document.getElementById('res-symptoms');
   symp.innerHTML = r.symptoms.length
     ? r.symptoms.map(s => `<li>${s}</li>`).join('')
-    : '<li style="color:var(--accent)">No disease symptoms detected ✓</li>';
+    : `<li style="color:var(--accent);font-weight:600">Prediction: ${r.disease} — ${r.conf.toFixed(1)}% confidence</li>`;
 
   const topK = Math.max(1, +(document.getElementById('topK')?.value || 5));
   const bars = document.getElementById('conf-bars');
